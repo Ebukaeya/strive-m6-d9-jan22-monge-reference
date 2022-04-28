@@ -16,4 +16,21 @@ const booksSchema = new Schema(
   }
 )
 
+// ************************************ CUSTOM METHOD ******************************************************
+// we are going to attach a custom method to the schema --> everywhere we gonna import the model we gonna have that method available
+
+booksSchema.static("findBooksWithAuthors", async function (mongoQuery) {
+  // if I use an arrow function here, "this" will be undefined. If I use a normal function, "this" will refer to BooksModel itself
+
+  const total = await this.countDocuments(mongoQuery.criteria)
+
+  const books = await this.find(mongoQuery.criteria, mongoQuery.options.fields)
+    .skip(mongoQuery.options.skip || 0)
+    .limit(mongoQuery.options.limit || 10)
+    .sort(mongoQuery.options.sort)
+    .populate({ path: "authors", select: "firstName lastName" })
+
+  return { total, books }
+})
+
 export default model("Book", booksSchema)
