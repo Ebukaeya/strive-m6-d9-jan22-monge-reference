@@ -2,6 +2,7 @@ import express from "express"
 import createError from "http-errors"
 import UsersModel from "./model.js"
 import BooksModel from "../books/model.js"
+import CartsModel from "./cartModel.js"
 
 const usersRouter = express.Router()
 
@@ -185,6 +186,60 @@ usersRouter.delete("/:userId/purchaseHistory/:bookId", async (req, res, next) =>
       res.send(modifiedUser)
     } else {
       next(createError(404, `User with id ${req.params.userId} not found!`))
+    }
+  } catch (error) {
+    next(error)
+  }
+})
+
+usersRouter.post("/:userId/cart", async (req, res, next) => {
+  try {
+    // we are going to receive bookId and quantity from req.body
+
+    const { bookId, quantity } = req.body
+
+    // 1. Does user exist?
+    const user = await UsersModel.findById(req.params.userId)
+    if (!user) return next(createError(404, `User with id ${req.params.userId} not found!`))
+
+    // 2. Does book exist?
+    const purchasedBook = await BooksModel.findById(bookId)
+    if (!purchasedBook) return next(createError(404, `Book with id ${bookId} not found!`))
+
+    // 3. Is the book already in the ACTIVE cart of the specified user?
+    const isBookThere = await CartsModel.findOne({ owner: req.params.userId, status: "Active", "products.productId": bookId })
+
+    console.log(isBookThere)
+    if (isBookThere) {
+      // 3.1 If book is there --> increase quantity
+
+      // In plain JS:
+      // 1. find index of the element in the products array
+      // 2. products[index].quantity += quantity
+      // 3. save it back
+
+      const modifiedCart = await CartsModel.findOneAndUpdate(
+        { owner: req.params.userId, status: "Active", "products.productId": bookId }, // WHAT
+        {
+          $inc: { "products.$.quantity": quantity },
+        }, // HOW
+        { new: true }
+      )
+
+      res.send(modifiedCart)
+    } else {
+      // 3.2 If it is not --> add to cart (if the cart exists)
+
+      const modifiedCart = await CartsModel.findOneAndUpdate(
+        { status: "Active", owner: req.params.userId }, // WHAT we want to modify
+        { $push: { products: { quantity, productId: bookId } } }, // HOW we want to modify the record
+        {
+          new: true, // OPTIONS
+          upsert: true, // if the active cart of that user is not found --> please create it automagically
+        }
+      )
+
+      res.send(modifiedCart)
     }
   } catch (error) {
     next(error)
