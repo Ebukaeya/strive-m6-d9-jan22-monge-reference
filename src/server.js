@@ -5,6 +5,7 @@ import cors from "cors"
 
 import usersRouter from "./services/users/index.js"
 import booksRouter from "./services/books/index.js"
+import authorsRouter from "./services/authors/index.js"
 
 const server = express()
 const port = process.env.PORT || 3001
@@ -18,6 +19,7 @@ server.use(express.json())
 
 server.use("/users", usersRouter)
 server.use("/books", booksRouter)
+server.use("/authors", authorsRouter)
 
 // ************************************** ERROR HANDLERS *************************************
 

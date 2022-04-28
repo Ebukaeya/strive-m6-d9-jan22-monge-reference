@@ -6,6 +6,10 @@ const booksRouter = express.Router()
 
 booksRouter.post("/", async (req, res, next) => {
   try {
+    const newBook = new BooksModel(req.body)
+    const { _id } = await newBook.save()
+
+    res.status(201).send({ _id })
   } catch (error) {
     next(error)
   }
@@ -24,6 +28,7 @@ booksRouter.get("/", async (req, res, next) => {
       .skip(mongoQuery.options.skip || 0)
       .limit(mongoQuery.options.limit || 10)
       .sort(mongoQuery.options.sort)
+      .populate({ path: "authors", select: "firstName lastName" })
     res.send({ links: mongoQuery.links("http://localhost:3001/books", total), totalPages: Math.ceil(total / mongoQuery.options.limit), total, books })
   } catch (error) {
     next(error)
@@ -32,6 +37,9 @@ booksRouter.get("/", async (req, res, next) => {
 
 booksRouter.get("/:id", async (req, res, next) => {
   try {
+    const book = await BooksModel.findById(req.params.id).populate({ path: "authors", select: "lastName" })
+
+    res.send(book)
   } catch (error) {
     next(error)
   }
